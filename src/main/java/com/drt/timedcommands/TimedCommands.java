@@ -265,9 +265,14 @@ public class TimedCommands implements ModInitializer {
         }
 
         int count = timers.size();
+        for (ActiveTimer timer : timers.values()) {
+            timer.action.expire(context.getSource().getServer());
+        }
+
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "Cancelled " + count + " timed command(s) for " + player.getName().getString() + "."
+                        "Cancelled " + count + " timed command(s) for " + player.getName().getString() +
+                                " and restored their saved state where possible."
                 ),
                 true
         );
