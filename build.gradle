@@ -46,7 +46,7 @@ jar {
     def projectName = project.name
 
     from("LICENSE") {
-        rename { "${it}_x${projectName}" }
+        rename { "${it}_${projectName}" }
     }
 }
 
