@@ -52,7 +52,6 @@ public class TimedCommands implements ModInitializer {
     }
 
     private static int executeTimedGamemode(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        MinecraftServer server = context.getSource().getServer();
         long durationTicks = parseDuration(StringArgumentType.getString(context, "duration"));
         GameType targetMode = GameModeArgument.getGameMode(context, "mode");
         Collection<ServerPlayer> targets = EntityArgument.getPlayers(context, "targets");
@@ -73,12 +72,13 @@ public class TimedCommands implements ModInitializer {
             changed++;
         }
 
-        String targetText = changed == 1 ? "player" : "players";
+        final int changedCount = changed;
+        String targetText = changedCount == 1 ? "player" : "players";
         long seconds = Math.max(1, Math.round(durationTicks / 20.0));
 
         context.getSource().sendSuccess(
                 () -> Component.literal("Timed gamemode: " + targetMode.getSerializedName()
-                        + " for " + changed + " " + targetText + " (" + seconds + "s)."),
+                        + " for " + changedCount + " " + targetText + " (" + seconds + "s)."),
                 true
         );
 
