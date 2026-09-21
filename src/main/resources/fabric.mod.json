@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "timedcommands",
+  "version": "${version}",
+  "name": "TimedCommands",
+  "description": "Temporary command effects for Minecraft 26.2, starting with timed gamemode changes.",
+  "authors": [
+    "danielreytalan635-tech"
+  ],
+  "contact": {
+    "sources": "https://github.com/danielreytalan635-tech/TimedCommands"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.drt.timedcommands.TimedCommands"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.161.0+26.2"
+  }
+}
