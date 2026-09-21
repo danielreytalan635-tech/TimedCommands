@@ -11,7 +11,7 @@
     "sources": "https://github.com/danielreytalan635-tech/TimedCommands"
   },
   "license": "MIT",
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": [
       "com.drt.timedcommands.TimedCommands"
