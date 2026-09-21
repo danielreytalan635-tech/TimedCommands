@@ -526,12 +526,18 @@ public class TimedCommands implements ModInitializer {
         }
     }
 
-    private record ActiveTimer(
-            String commandName,
-            long durationTicks,
-            TimedAction action
-    ) {
-        private long remainingTicks = durationTicks;
+    private static final class ActiveTimer {
+        private final String commandName;
+        private final long durationTicks;
+        private final TimedAction action;
+        private long remainingTicks;
+
+        private ActiveTimer(String commandName, long durationTicks, TimedAction action) {
+            this.commandName = commandName;
+            this.durationTicks = durationTicks;
+            this.action = action;
+            this.remainingTicks = durationTicks;
+        }
     }
 
     private static final class GamemodeAction implements TimedAction {
