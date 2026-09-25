@@ -25,6 +25,8 @@ Current built-in timed handlers:
 
 The `op` and `deop` handlers require the administrator permission. The base `/timed` command requires the moderator permission.
 
+Timed `op` and `deop` use an in-memory permission override and do **not** modify `ops.json`.
+
 ## Command scanning
 
 `/timed scan`
