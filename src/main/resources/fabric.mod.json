@@ -3,7 +3,7 @@
   "id": "timedcommands",
   "version": "${version}",
   "name": "TimedCommands",
-  "description": "Temporary command effects for Minecraft 26.2, starting with timed gamemode changes.",
+  "description": "Temporary command effects for Minecraft 26.2, including non-persistent timed operator permissions.",
   "authors": [
     "danielreytalan635-tech"
   ],
@@ -17,6 +17,9 @@
       "com.drt.timedcommands.TimedCommands"
     ]
   },
+  "mixins": [
+    "timedcommands.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.19.5",
     "minecraft": "~26.2",
