@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 public class TimedCommands implements ModInitializer {
@@ -36,6 +38,9 @@ public class TimedCommands implements ModInitializer {
 
     private static final Map<String, TimedCommandHandler> HANDLERS = new LinkedHashMap<>();
     private static final Map<UUID, Map<String, ActiveTimer>> ACTIVE = new HashMap<>();
+
+    private static final Set<UUID> TEMPORARY_OP_GRANTS = new HashSet<>();
+    private static final Set<UUID> TEMPORARY_OP_REVOKES = new HashSet<>();
 
     private static final SimpleCommandExceptionType INVALID_DURATION =
             new SimpleCommandExceptionType(Component.literal(
@@ -118,6 +123,49 @@ public class TimedCommands implements ModInitializer {
             throw new IllegalArgumentException("Timed command name and handler are required.");
         }
         HANDLERS.put(commandName.toLowerCase(), handler);
+    }
+
+    public static boolean isTemporarilyOpped(UUID uuid) {
+        return TEMPORARY_OP_GRANTS.contains(uuid);
+    }
+
+    public static boolean isTemporarilyDeopped(UUID uuid) {
+        return TEMPORARY_OP_REVOKES.contains(uuid);
+    }
+
+    private static void setTemporaryOp(UUID uuid, boolean op) {
+        if (op) {
+            TEMPORARY_OP_REVOKES.remove(uuid);
+            TEMPORARY_OP_GRANTS.add(uuid);
+        } else {
+            TEMPORARY_OP_GRANTS.remove(uuid);
+            TEMPORARY_OP_REVOKES.add(uuid);
+        }
+    }
+
+    private static void clearTemporaryOp(UUID uuid, boolean op) {
+        if (op) {
+            TEMPORARY_OP_GRANTS.remove(uuid);
+        } else {
+            TEMPORARY_OP_REVOKES.remove(uuid);
+        }
+    }
+
+    private static boolean hasTimer(UUID uuid, String commandName) {
+        Map<String, ActiveTimer> timers = ACTIVE.get(uuid);
+        return timers != null && timers.containsKey(commandName);
+    }
+
+    private static boolean hasPermissionTimer(UUID uuid) {
+        Map<String, ActiveTimer> timers = ACTIVE.get(uuid);
+        return timers != null && (timers.containsKey("op") || timers.containsKey("deop"));
+    }
+
+    private static void refreshPlayerPermissions(MinecraftServer server, UUID uuid) {
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+        if (player != null) {
+            server.getPlayerList().sendPlayerPermissionLevel(player);
+        }
     }
 
     private static void registerBuiltInHandlers() {
@@ -313,10 +361,6 @@ public class TimedCommands implements ModInitializer {
         }
     }
 
-    private static Map<String, ActiveTimer> timersFor(UUID uuid) {
-        return ACTIVE.computeIfAbsent(uuid, ignored -> new HashMap<>());
-    }
-
     private static void removeEmptyTimerMap(UUID uuid) {
         Map<String, ActiveTimer> timers = ACTIVE.get(uuid);
         if (timers != null && timers.isEmpty()) {
@@ -428,7 +472,7 @@ public class TimedCommands implements ModInitializer {
         Map<UUID, TimedAction> actions = new LinkedHashMap<>();
 
         for (ServerPlayer player : targets) {
-            if (timersFor(player.getUUID()).containsKey("gamemode")) {
+            if (hasTimer(player.getUUID(), "gamemode")) {
                 throw TIMER_CONFLICT.create();
             }
 
@@ -464,14 +508,15 @@ public class TimedCommands implements ModInitializer {
         Map<UUID, TimedAction> actions = new LinkedHashMap<>();
 
         for (NameAndId target : targets) {
-            if (timersFor(target.id()).containsKey("op")) {
+            if (hasPermissionTimer(target.id())) {
                 throw TIMER_CONFLICT.create();
             }
+        }
 
-            boolean originalOp = server.getPlayerList().isOp(target);
-            server.getPlayerList().op(target);
-
-            actions.put(target.id(), new OpAction(target, true, originalOp));
+        for (NameAndId target : targets) {
+            setTemporaryOp(target.id(), true);
+            refreshPlayerPermissions(server, target.id());
+            actions.put(target.id(), new OpAction(target, true));
         }
 
         return actions;
@@ -496,14 +541,15 @@ public class TimedCommands implements ModInitializer {
         Map<UUID, TimedAction> actions = new LinkedHashMap<>();
 
         for (NameAndId target : targets) {
-            if (timersFor(target.id()).containsKey("deop")) {
+            if (hasPermissionTimer(target.id())) {
                 throw TIMER_CONFLICT.create();
             }
+        }
 
-            boolean originalOp = server.getPlayerList().isOp(target);
-            server.getPlayerList().deop(target);
-
-            actions.put(target.id(), new OpAction(target, false, originalOp));
+        for (NameAndId target : targets) {
+            setTemporaryOp(target.id(), false);
+            refreshPlayerPermissions(server, target.id());
+            actions.put(target.id(), new OpAction(target, false));
         }
 
         return actions;
@@ -590,31 +636,21 @@ public class TimedCommands implements ModInitializer {
     private static final class OpAction implements TimedAction {
         private final NameAndId target;
         private final boolean temporaryOp;
-        private final boolean originalOp;
 
-        private OpAction(NameAndId target, boolean temporaryOp, boolean originalOp) {
+        private OpAction(NameAndId target, boolean temporaryOp) {
             this.target = target;
             this.temporaryOp = temporaryOp;
-            this.originalOp = originalOp;
         }
 
         @Override
         public String description() {
-            return temporaryOp ? "temporary OP" : "temporary de-OP";
+            return temporaryOp ? "temporary OP (non-persistent)" : "temporary de-OP (non-persistent)";
         }
 
         @Override
         public boolean expire(MinecraftServer server) {
-            boolean currentOp = server.getPlayerList().isOp(target);
-
-            if (currentOp == temporaryOp) {
-                if (originalOp) {
-                    server.getPlayerList().op(target);
-                } else {
-                    server.getPlayerList().deop(target);
-                }
-            }
-
+            clearTemporaryOp(target.id(), temporaryOp);
+            refreshPlayerPermissions(server, target.id());
             return true;
         }
     }
